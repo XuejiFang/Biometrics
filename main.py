@@ -4,10 +4,18 @@ import argparse
 import numpy as np
 import cv2 as cv
 
+# for handPose
+from HandTrackingModule import HandDetector
+import dlib
+import random
+
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--database_dir', '-db', type=str, default='./database')
-parser.add_argument('--face_detection_model', '-fd', type=str, required=True)
-parser.add_argument('--face_recognition_model', '-fr', type=str, required=True)
+parser.add_argument('--database_dir', '-db', type=str, default='./database/for_train/')
+parser.add_argument('--face_detection_model', '-fd', type=str,
+                    default='./models/face_detection_yunet_2021dec-quantized.onnx', required=False)
+parser.add_argument('--face_recognition_model', '-fr', type=str,
+                    default='./models/face_recognition_sface_2021dec-quantized.onnx', required=False)
 args = parser.parse_args()
 
 
@@ -26,9 +34,9 @@ def detect_face(detector, image):
 
     # 检测人脸
     results = detector.detect(image)
-    if ( isinstance(results, tuple) ):
+    if isinstance(results, tuple):
         faces = results[1] if results[1] is not None else [];
-    elif ( isinstance(results, list) ):
+    elif isinstance(results, list):
         faces = [results[fi][1] for fi in len(results) if results[fi][1] is not None]
     else:
         faces = []
@@ -49,7 +57,7 @@ def extract_feature(recognizer, image, faces):
     '''
     features = []
     ### TODO: your code starts here
-    
+
     for i in range(len(faces)):
         aligned_face = recognizer.alignCrop(image, faces[i][:-1])
         features.append(recognizer.feature(aligned_face))
@@ -75,8 +83,6 @@ def match(recognizer, feature1, feature2, dis_type=1):
     isMatched = False
     ### TODO: your code starts here
 
-
-
     if dis_type == 0:
         score = recognizer.match(feature1, feature2, dis_type=0)
         if score < cosine_threshold:
@@ -98,6 +104,7 @@ def get_identity(filename):
 
     return identity
 
+
 def load_database(database_path, detector, recognizer):
     ''' Load database from the given database_path into a dictionary. It tries to load extracted features first, and call detect_face & extract_feature to get features from images (*.jpg, *.png).
 
@@ -116,7 +123,7 @@ def load_database(database_path, detector, recognizer):
     for filename in os.listdir(database_path):
         if filename.endswith('.npy'):
             # identity = filename[:-4]
-            identity = get_identity(filename)
+            identity = str.split(filename, '.')[0]
             if identity not in db_features:
                 db_features[identity] = np.load(os.path.join(database_path, filename))
     npy_cnt = len(db_features)
@@ -154,6 +161,74 @@ def visualize(image, faces, identities, fps, box_color=(0, 255, 0), text_color=(
 
     return output
 
+# 改变图片的亮度与对比度
+
+def relight(img, light=1, bias=0):
+    w = img.shape[1]
+    h = img.shape[0]
+    # image = []
+    for i in range(0, w):
+        for j in range(0, h):
+            for c in range(3):
+                tmp = int(img[j, i, c] * light + bias)
+                if tmp > 255:
+                    tmp = 255
+                elif tmp < 0:
+                    tmp = 0
+                img[j, i, c] = tmp
+    return img
+def getFace(output_dir=None):
+    # 使用dlib自带的frontal_face_detector作为我们的特征提取器
+    detector = dlib.get_frontal_face_detector()
+    # 打开摄像头 参数为输入流，可以为摄像头或视频文件
+    camera = cv.VideoCapture(0)
+
+    name = input("请输入录入人的姓名:")
+    index = 1
+    ok = True
+
+    while ok:
+
+        # 从摄像头读取照片
+        # 读取摄像头中的图像，ok为是否读取成功的判断参数
+        ok, img = camera.read()
+
+        # 转换成灰度图像
+        img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        # 使用detector进行人脸检测
+        dets = detector(img_gray, 1)
+        for i, d in enumerate(dets):
+            x1 = d.top() if d.top() > 0 else 0
+            y1 = d.bottom() if d.bottom() > 0 else 0
+            x2 = d.left() if d.left() > 0 else 0
+            y2 = d.right() if d.right() > 0 else 0
+            # 截取人脸方框
+            face = img[x1:y1, x2:y2]
+
+            # 绘制矩形框标注人脸
+            cv.rectangle(img, tuple([x2, x1]), tuple([y2, y1]), (0, 255, 255), 2)
+            print('Being processed picture %s' % index)
+            # 调整图片的对比度与亮度， 对比度与亮度值都取随机数，这样能增加样本的多样性
+            face = relight(face, random.uniform(0.5, 1.5), random.randint(-50, 50))
+
+            # 重设图片大小
+            face = cv.resize(face, target_size)
+            face = cv.resize(face, target_size)
+
+        # 展示摄像头读取到的图片
+        cv.imshow(name, img)
+        key = cv.waitKey(1)
+        # ESC退出
+        if key == 27:
+            cv.destroyAllWindows()
+            return 0
+        # s保存
+        elif key == 115:
+            # 保存图片
+            cv.imwrite(args.database_dir+name + '_' + str(index-1) + '.jpg', face)
+            print("save success ")
+            index += 1
+
 
 if __name__ == '__main__':
     target_size = [640, 480]
@@ -161,7 +236,7 @@ if __name__ == '__main__':
     detector = cv.FaceDetectorYN.create(model=args.face_detection_model,
                                         config='',
                                         input_size=target_size,
-                                        score_threshold=0.99,
+                                        score_threshold=0.999,
                                         backend_id=cv.dnn.DNN_BACKEND_DEFAULT,
                                         target_id=cv.dnn.DNN_TARGET_CPU
                                         )
@@ -171,6 +246,8 @@ if __name__ == '__main__':
                                             backend_id=cv.dnn.DNN_BACKEND_DEFAULT,
                                             target_id=cv.dnn.DNN_TARGET_CPU
                                             )
+    # detect hand
+    detect_hand = HandDetector()
 
     # Load database
     database = load_database(args.database_dir, detector, recognizer)
@@ -191,8 +268,44 @@ if __name__ == '__main__':
             break
 
         tm.start()
+
+        # detect hand pose
+        hands = detect_hand.findHands(frame)
+        lmList, bbox = detect_hand.findPosition(hands)
+
+        if lmList:
+            x_1, y_1 = bbox["bbox"][0], bbox["bbox"][1]
+            x1, x2, x3, x4, x5 = detect_hand.fingersUp()
+
+            if (x2 == 1 and x3 == 1) and (x4 == 0 and x5 == 0 and x1 == 0):
+                cv.putText(hands, "2_TWO", (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 3,
+                            (0, 0, 255), 3)
+            elif (x2 == 1 and x3 == 1 and x4 == 1) and (x1 == 0 and x5 == 0):
+                cv.putText(hands, "3_THREE", (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 3,
+                            (0, 0, 255), 3)
+            elif (x2 == 1 and x3 == 1 and x4 == 1 and x5 == 1) and (x1 == 0):
+                cv.putText(hands, "4_FOUR", (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 3,
+                            (0, 0, 255), 3)
+            elif x1 == 1 and x2 == 1 and x3 == 1 and x4 == 1 and x5 == 1:
+                cv.putText(hands, "5_FIVE", (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 3,
+                            (0, 0, 255), 3)
+            elif x2 == 1 and (x1 == 0, x3 == 0, x4 == 0, x5 == 0):
+                cv.putText(hands, "1_ONE", (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 3,
+                            (0, 0, 255), 3)
+            elif x1 and (x2 == 0, x3 == 0, x4 == 0, x5 == 0):
+                cv.putText(hands, "GOOD!", (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 3,
+                            (0, 0, 255), 3)
+                print('===New Registration will start 1s later===\n')
+                cap.release()
+                cv.destroyAllWindows()
+                if getFace(args.database_dir) == 0:
+                    print('===Registration Ends===\n')
+                    # reLoad database
+                    database = load_database(args.database_dir, detector, recognizer)
+                    cap = cv.VideoCapture(0, cv.CAP_DSHOW)
+
         # detect faces
-        faces = detect_face(detector, frame) 
+        faces = detect_face(detector, frame)
         # extract features
         features = extract_feature(recognizer, frame, faces)
         # match detected faces with database
