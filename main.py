@@ -26,8 +26,12 @@ def detect_face(detector, image):
 
     # 检测人脸
     results = detector.detect(image)
-    faces = results[1]
-
+    if ( isinstance(results, tuple) ):
+        faces = results[1] if results[1] is not None else [];
+    elif ( isinstance(results, list) ):
+        faces = [results[fi][1] for fi in len(results) if results[fi][1] is not None]
+    else:
+        faces = []
     ### your code ends here
     return faces
 
@@ -45,7 +49,7 @@ def extract_feature(recognizer, image, faces):
     '''
     features = []
     ### TODO: your code starts here
-
+    
     for i in range(len(faces)):
         aligned_face = recognizer.alignCrop(image, faces[i][:-1])
         features.append(recognizer.feature(aligned_face))
@@ -152,11 +156,12 @@ def visualize(image, faces, identities, fps, box_color=(0, 255, 0), text_color=(
 
 
 if __name__ == '__main__':
+    target_size = [640, 480]
     # Initialize FaceDetectorYN
     detector = cv.FaceDetectorYN.create(model=args.face_detection_model,
                                         config='',
-                                        input_size=(640, 480),
-                                        score_threshold=0.8,
+                                        input_size=target_size,
+                                        score_threshold=0.99,
                                         backend_id=cv.dnn.DNN_BACKEND_DEFAULT,
                                         target_id=cv.dnn.DNN_TARGET_CPU
                                         )
@@ -180,13 +185,14 @@ if __name__ == '__main__':
     tm = cv.TickMeter()
     while cv.waitKey(1) < 0:
         hasFrame, frame = cap.read()
+        frame = cv.resize(frame, (target_size[0], target_size[1]))
         if not hasFrame:
             print('No frames grabbed!')
             break
 
         tm.start()
         # detect faces
-        faces = detect_face(detector, frame)
+        faces = detect_face(detector, frame) 
         # extract features
         features = extract_feature(recognizer, frame, faces)
         # match detected faces with database
