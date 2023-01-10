@@ -95,15 +95,6 @@ def match(recognizer, feature1, feature2, dis_type=1):
     return isMatched
 
 
-def get_identity(filename):
-    # original
-    # identity = filename[:-4]
-    filename = str.split(filename, '.')[0]
-    identity = str.split(filename, '_')[0]
-
-    return identity
-
-
 def load_database(database_path, detector, recognizer):
     ''' Load database from the given database_path into a dictionary. It tries to load extracted features first, and call detect_face & extract_feature to get features from images (*.jpg, *.png).
 
@@ -130,7 +121,7 @@ def load_database(database_path, detector, recognizer):
     for filename in os.listdir(database_path):
         if filename.endswith('.jpg') or filename.endswith('.png'):
             # identity = filename[:-4]
-            identity = get_identity(filename)
+            identity = str.split(filename, '_')[0]
             print(identity)
             if identity not in db_features:
                 image = cv.imread(os.path.join(database_path, filename))
@@ -244,7 +235,8 @@ if __name__ == '__main__':
 
     # Real-time face recognition
     tm = cv.TickMeter()
-    enterNameFlag = 0
+    registerFlag = 0
+    logoutFlag = 0
     while True:
         key = cv.waitKey(1)
         if key == 27:
@@ -270,6 +262,8 @@ if __name__ == '__main__':
             x_1, y_1 = bbox["bbox"][0], bbox["bbox"][1]
             x1, x2, x3, x4, x5 = detect_hand.fingersUp()
 
+            # cv.putText(hands, str(x1)+' '+str(x2)+' '+str(x3)+' '+str(x4)+' '+str(x5), (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 3, (0, 0, 255), 3)
+
             if (x2 == 1 and x3 == 1) and (x4 == 0 and x5 == 0 and x1 == 0):
                 cv.putText(hands, "2_TWO", (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 3,
                             (0, 0, 255), 3)
@@ -285,31 +279,73 @@ if __name__ == '__main__':
             elif x2 == 1 and (x1 == 0, x3 == 0, x4 == 0, x5 == 0):
                 cv.putText(hands, "1_ONE", (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 3,
                             (0, 0, 255), 3)
+
+            elif x1 == 0 and x2 == 0 and x3 == 0 and x4 == 0 and x5 == 0:
+                cv.putText(hands, "Press [y/Y] If You", (x_1, y_1), cv.FONT_HERSHEY_PLAIN, 2,
+                           (0, 255, 255), 2)
+                cv.putText(hands, "Want To Logout", (x_1, y_1 + 30), cv.FONT_HERSHEY_PLAIN, 2,
+                           (0, 255, 255), 2)
+                if key == 121 or key == 89:
+                    cv.putText(frame, "Please Enter Face Name In Terminal ", (30, 60), cv.FONT_HERSHEY_PLAIN, 2,
+                                    (255, 255, 0), 2)
+                    logoutFlag = 2
+
+
             elif x1 and (x2 == 0, x3 == 0, x4 == 0, x5 == 0):
                 cv.putText(hands, "Press [y/Y] If You", (x_1, y_1 ), cv.FONT_HERSHEY_PLAIN, 2,
                             (0, 255, 255), 2)
                 cv.putText(hands, "Want To Register/Update", (x_1, y_1 + 30), cv.FONT_HERSHEY_PLAIN, 2,
                                             (0, 255, 255), 2)
-                if ( key == 121 or key == 89 ):
+                if key == 121 or key == 89:
                     cv.putText(frame, "Please Enter Face Name In Terminal ", (30, 60), cv.FONT_HERSHEY_PLAIN, 2,
                                     (255, 255, 0), 2)
-                    enterNameFlag = 2
+                    registerFlag = 2
 
         
         # detect faces
         faces = detect_face(detector, frame)
-
-        while(enterNameFlag == 1):
+        # New Registration
+        while registerFlag == 1:
             name = input("请输入录入人的姓名:")
-            if(len(name) > 0):
+            if len(name) > 0:
                 print(name)
-                enterNameFlag = 0;
-                cv.imwrite(os.path.join(args.database_dir, name + '.png'), raw_frame)
+                registerFlag = 0;
+                numName = 0
+                for img in os.listdir(args.database_dir):
+                    imgName = str.split(img, '_')[0]
+                    if imgName == name:
+                        numName += 1
+                    
+                cv.imwrite(os.path.join(args.database_dir, name +'_' + str(numName) + '.png'), raw_frame)
                 database = load_database(args.database_dir, detector, recognizer)
                 break
-        if(enterNameFlag):
-            enterNameFlag = 1
+        if registerFlag:
+            registerFlag = 1
             
+        # Logout
+        while logoutFlag == 1:
+            name = input("请输入录入人的姓名:")
+            if len(name) > 0:
+                print(name)
+                logoutFlag = 0;
+                for img in os.listdir(args.database_dir):
+                    if img.endswith('.jpg') or img.endswith('.png'):
+                        imgName = str.split(img, '_')[0]
+                        if imgName == name:
+                            os.remove(args.database_dir+img)
+                            print('{} has been removed\n'.format(img))
+                    elif img.endswith('.npy'):
+                        imgName = str.split(img, '.')[0]
+                        if imgName == name:
+                            os.remove(args.database_dir + img)
+                            print('{} has been removed\n'.format(img))
+
+                database = load_database(args.database_dir, detector, recognizer)
+                break
+        if logoutFlag:
+            logoutFlag = 1
+
+
         # extract features
         features = extract_feature(recognizer, frame, faces)
         # match detected faces with database
