@@ -1,0 +1,3 @@
+broker_ip: "iot.taginator.cn"
+broker_port: 39683
+topic: "nssol/rtb/sensor1"

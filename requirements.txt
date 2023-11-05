@@ -1,0 +1,4 @@
+# MQTT
+paho-mqtt
+opencv-python
+numpy
