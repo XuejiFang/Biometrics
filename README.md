@@ -16,6 +16,15 @@ Install the essential packages by:
 
 `pip install -r requirements.txt`
 
+## Per-trained Models
+
+```shell
+mkdir checkpoints
+cd checkpoints
+```
+
+Download the pre-trained models by the [links](https://westlakeu-my.sharepoint.com/:f:/g/personal/fangxueji_westlake_edu_cn/Eo4icEalRGtIm2qPN_2BSvwBzeFwAw8fA-esv6EDmSE_iA?e=UhMUZA), and put them into the `checkpoints` folder.
+
 ## Config
 
 ```yaml
