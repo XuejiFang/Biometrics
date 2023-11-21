@@ -27,9 +27,11 @@ topic: "nssol/rtb/sensor1"      # MQTT topic, optional "nssol/rtb/sensor1"
 ## To Do
 
 - [x] Subscribe MQTT
+  - [ ] Optimize
 - [x] Face Detection (YuNet)
-- [ ] Face Rcongnition
+- [ ] Face Recognition
 - [x] Skeleton Points Detection
 - [x] Pose Estimation
+  - [ ] Optimize
 - [ ] Draw Skeleton and Face Detection Boxes
 - [ ] Implement in C++
