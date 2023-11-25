@@ -320,7 +320,11 @@ class Detector:
         # for pos in face_position:
         #     cv2.imwrite('result.jpg', image[pos[0][1]:pos[1][1], pos[0][0]:pos[1][0]])
 
-        return face_position
+        List = []
+            if face_position:
+                for pos in face_position:
+                    List.append(pos[1][0]-pos[0][0])
+        return face_position, np.mean(List) if List else 0
 
     def ExtractFeature(self, recognizer, img, face_position):
         features = []
@@ -357,6 +361,16 @@ class Detector:
 
         #Detect
         face_position = self.DetectFace(img)
+        if face_position:
+            Width = int(img.shape[0]/dist*126)
+            height_ratio = img.shape[0]/Width
+            width_ratio = img.shape[1]/Width
+            img = cv.resize(img,(Width, Width))
+        else:
+            height_ratio = img.shape[0] / 512
+            width_ratio = img.shape[1] / 512
+            img = cv.resize(img, (512, 512))
+        face_position, dist = DetectFace(img)
         step2_end_time = time()
 
         #Extract Feature
@@ -378,7 +392,7 @@ class Detector:
         print("Extract Feature:", step3_duration)
         print("Match:", step4_duration)
 
-        return face_position, name, height_radio, width_radio
+        return face_position, name, height_ratio, width_ratio
     
     def cv2ImgAddText(self, img, text, left, top, textColor=(0, 255, 0), textSize=10):
         if isinstance(img, np.ndarray):  # 判断是否OpenCV图片类型
