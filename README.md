@@ -36,15 +36,24 @@ topic: "nssol/rtb/sensor1"      # MQTT topic, optional "nssol/rtb/sensor1"
 ## Face Recognize and Draw Picture
 
 ./face_detect/face_recognize.py 
+
 function RecognizeFace()
+
     Input: image(numpy array of w*h*3)
+    
     Return: face_postion, name, height_ratio, width_ratio
+    
         · face_position is a list of detected position of face ([[face1_x, face1_y],[face2_x, face2_y]...])
+        
         · name is a list of name of detected face, they are one-to-one correspondence
+        
         · height_ratio and width_ratio is the radio between the original pictiure and the resized picture, used for adjusting the detected face bounding box
+        
 
 function DrawPicture()
+
     Input: image(original), face_positions, names, body_points(the return of multi-object), height_ratio, width_ratio
+    
     Return: a picture with name and action tag over the detected face
       
 
