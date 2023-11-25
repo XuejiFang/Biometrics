@@ -28,7 +28,7 @@ class Detector:
             input_size=(self.image_height, self.image_width),
             score_threshold=self.score_threshold,
             nms_threshold=self.nms_threshold,
-            top_k=5000,
+            top_k=10,
             backend_id=self.backend,
             target_id=self.target
         )
