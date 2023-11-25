@@ -19,16 +19,29 @@ def cv2ImgAddText(img, text, left, top, textColor=(0, 255, 0), textSize=10):
     # 转换回OpenCV格式
     return cv.cvtColor(np.asarray(img), cv.COLOR_RGB2BGR)
 
+def check_act(body_points, left_up_x, left_up_y, right_bottom_x, right_bottom_y):
+    poseDict = {0: "举手", 1: "下蹲", 2: "剪刀手", 3: "其他"}
+    act = "其他"
+    for body_point in body_points:
+        if left_up_x<body_point[0]<right_bottom_x and left_up_y<body_point[1]<right_bottom_y:
+            act = poseDict[body_point[2]]
+    return act
+
 def DrawPicture(image, face_positions, names, body_points, height_radio, width_radio):
     if names:
         for face_position, name in zip(face_positions, names):
-            text = '人名：%s\n动作: \n'%(name[0])
+            left_up_x = int(face_position[0][0]*width_radio)
+            left_up_y = int(face_position[0][1]*height_radio)
+            right_bottom_x = int(face_position[1][0]*width_radio)
+            right_bottom_y = int(face_position[1][1]*height_radio)
+            act = check_act(body_points, left_up_x, left_up_y, right_bottom_x, right_bottom_y)
+
+            text = '人名：%s\n动作：%s\n'%(name[0],act)
             # Draw face bounding box
-            cv.rectangle(image, (int(face_position[0][0]*width_radio), int(face_position[0][1]*height_radio)), (int(face_position[1][0]*width_radio), int(face_position[1][1]*height_radio)), (0, 0, 255), 2)
+            cv.rectangle(image, (left_up_x, left_up_y), (right_bottom_x, right_bottom_y), (0, 0, 255), 2)
             # Put Text
-            cv.rectangle(image, (int(face_position[0][0]*width_radio)-10, int(face_position[0][1]*height_radio)-10), (int(face_position[1][0]*width_radio)+10, int(face_position[0][1]*height_radio)-70), (255, 255, 255), 2)
-            # cv.putText(image, '{}'.text, (face_position[0][0], face_position[0][1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255))
-            image = cv2ImgAddText(image, text, int(face_position[0][0]*width_radio), int(face_position[0][1]*height_radio) - 65, (255, 0, 0), 20)
+            cv.rectangle(image, (left_up_x-10, left_up_y-10), (left_up_x+140, left_up_y-70), (255, 255, 255), 2)
+            image = cv2ImgAddText(image, text, left_up_x, left_up_y - 65, (255, 0, 0), 20)
     return image
 
 def Getpos(image, faces):
