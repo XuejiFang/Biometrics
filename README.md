@@ -35,7 +35,7 @@ topic: "nssol/rtb/sensor1"      # MQTT topic, optional "nssol/rtb/sensor1"
 
 ## Face Recognize and Draw Picture
 
-with file ./face_detect/face_recognize.py 
+with file `./face_detect/face_recognize.py`
 
 `RecognizeFace()`
 
