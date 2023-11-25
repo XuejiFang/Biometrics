@@ -2,3 +2,8 @@
 paho-mqtt
 opencv-python
 numpy
+
+# Face-detect
+pillow
+argparse
+pickle
