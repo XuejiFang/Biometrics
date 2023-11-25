@@ -1,9 +1,7 @@
 # MQTT
-paho-mqtt
-opencv-python
-numpy
+paho-mqtt~=1.6.1
+opencv-python~=4.8.1.78
+numpy~=1.26.2
 
-# Face-detect
-pillow
-argparse
-pickle
+requests~=2.31.0
+PyYAML~=6.0.1
