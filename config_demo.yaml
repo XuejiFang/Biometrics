@@ -31,4 +31,4 @@ yunet:
   score_threshold: 0.6
   nms_threshold: 0.3
   sfaceFile: './checkpoints/sface.onnx'
-  dictFile: './checkpoints/resized_dict_data.pkl'
+  modelFile: './checkpoints/largeFaceRecognize4.pkl'
