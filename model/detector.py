@@ -1,8 +1,31 @@
 import cv2
 import numpy as np
-from time import time
 import pickle
+import torch.nn as nn
+import torch
 from PIL import Image, ImageDraw, ImageFont
+
+class Network(nn.Module):
+    def __init__(self):
+        super(Network,self).__init__()
+        self.linear1 = nn.Linear(128, 256)
+        self.linear4 = nn.Linear(256, 512)
+        self.linear7 = nn.Linear(512, 536)
+        self.relu = nn.ReLU()
+        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, feature):
+        feature = torch.tensor(feature)
+        feature = feature.view((1, 128))
+        feature = self.linear1(feature)
+        feature = self.relu(feature)
+        feature = self.linear4(feature)
+        feature = self.relu(feature)
+        feature = self.linear7(feature)
+        feature = self.sigmoid(feature)
+
+        return feature
 
 class Detector:
     def __init__(self, config):
@@ -11,7 +34,7 @@ class Detector:
 
         self.yunetFile = config["yunet"]["yunetFile"]
         self.sfaceFile = config['yunet']["sfaceFile"]
-        self.dictFile = config['yunet']["dictFile"]
+        self.modelFile = config['yunet']["modelFile"]
         self.score_threshold = config['yunet']['score_threshold']
         self.nms_threshold = config['yunet']['nms_threshold']
 
@@ -37,9 +60,10 @@ class Detector:
                                         config='',
                                         backend_id=cv2.dnn.DNN_BACKEND_DEFAULT,
                                         target_id=cv2.dnn.DNN_TARGET_CPU)
-
-        with open(self.dictFile, 'rb') as file:
-            self.faceDict = pickle.load(file)
+        self.model = Network()
+        self.model.load_state_dict(torch.load(self.modelFile))
+        with open(encoderFile, 'rb') as file:
+            self.name_encoder = pickle.load(file)
 
         self.net = cv2.dnn.readNetFromCaffe(self.protoFile, self.weightsFile)
         self.mapIdx = [[31,32], [39,40], [33,34], [35,36], [41,42], [43,44],
@@ -317,8 +341,6 @@ class Detector:
         _, faces = self.yunet.detect(image) # faces: None, or nx15 np.array
 
         face_position = self.Getpos(image, faces)
-        # for pos in face_position:
-        #     cv2.imwrite('result.jpg', image[pos[0][1]:pos[1][1], pos[0][0]:pos[1][0]])
 
         List = []
             if face_position:
@@ -331,68 +353,63 @@ class Detector:
         for pos in face_position:
             face_img = img[pos[0][1]:pos[1][1], pos[0][0]:pos[1][0]]
             features.append(recognizer.feature(face_img))
-            # rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            # features.append(face_recognition.face_encodings(rgb_img)[0])
         return features
 
-    def match(self, recognizer, features, faceDict):
+    def recognize(self, model, features, name_encoder):
         names = []
         for feature in features:
-            maxscore = 0
-            for key, value in faceDict.items():
-                score = recognizer.match(feature, value, dis_type=0)
-                # flag = face_recognition.compare_faces([feature], value)
-                # if flag[0]:
-                #     names.append([key])
-                if abs(score) > maxscore:
-                    maxscore = abs(score)
-                    maxscorename = key
-            names.append([maxscorename])
+            pred = model(feature)
+            index = np.argmax(pred.detach().numpy())
+            names.append(name_encoder.inverse_transform([index]))
         return names
 
+    def padding(img):   #padding到4：3
+        width = img.shape[1]/4
+        height = img.shape[0]/3
+        if width == height: return img, -1, 0
+        if width > height: flag = 1 #只需要在高上padding
+        else: flag = 0  #只需要在宽上padding
+
+        #计算补充量
+        if flag == 0:
+            delta = height * 4 - img.shape[1]
+            pad_img = cv.copyMakeBorder(img, 0, 0, int(delta//2), int(delta-delta//2), cv.BORDER_CONSTANT,
+                                    value=(255, 255, 255))
+        else:
+            delta = width * 3 - img.shape[0]
+            pad_img = cv.copyMakeBorder(img, 0, 0, int(delta // 2), int(delta - delta // 2), cv.BORDER_CONSTANT,
+                                    value=(255, 255, 255))
+        return pad_img, flag, int(delta // 2)
+
     def RecognizeFace(self, img):
-        start_time = time()
 
         #Init
-        step1_end_time = time()
-        height_radio = img.shape[0]/640
-        width_radio = img.shape[1]/480
-        img = cv2.resize(img,(480, 640))
+        padding_img, flag, padding_len = self.padding(img)
 
         #Detect
+        height_ratio = padding_img.shape[0]/480
+        width_ratio = padding_img.shape[1]/640
+        resized_img = cv.resize(padding_img, (640, 480))
         face_position = self.DetectFace(img)
-        if face_position:
-            Width = int(img.shape[0]/dist*126)
-            height_ratio = img.shape[0]/Width
-            width_ratio = img.shape[1]/Width
-            img = cv.resize(img,(Width, Width))
-        else:
-            height_ratio = img.shape[0] / 512
-            width_ratio = img.shape[1] / 512
-            img = cv.resize(img, (512, 512))
-        face_position, dist = DetectFace(img)
-        step2_end_time = time()
 
         #Extract Feature
         features = self.ExtractFeature(self.recognizer, img, face_position)
-        step3_end_time = time()
 
         #Match
-        name = self.match(self.recognizer, features, self.faceDict)
-        step4_end_time = time()
+        name = self.recognize(self.model, features, self.name_encoder)
 
         print(name)
 
-        step1_duration = step1_end_time - start_time
-        step2_duration = step2_end_time - step1_end_time
-        step3_duration = step3_end_time - step2_end_time
-        step4_duration = step4_end_time - step3_end_time
-        print("Init:", step1_duration)
-        print("Detect:", step2_duration)
-        print("Extract Feature:", step3_duration)
-        print("Match:", step4_duration)
+        for pos in face_position:
+            pos[0][0] = int(pos[0][0] * width_ratio)
+            pos[0][1] = int(pos[0][1] * height_ratio)
+            pos[1][0] = int(pos[1][0] * width_ratio)
+            pos[1][1] = int(pos[1][1] * height_ratio)
+            if flag != -1:
+                pos[0][0] = int(pos[0][0] - padding_len)
+                pos[1][0] = int(pos[1][0] - padding_len)
 
-        return face_position, name, height_ratio, width_ratio
+        return face_position, name
     
     def cv2ImgAddText(self, img, text, left, top, textColor=(0, 255, 0), textSize=10):
         if isinstance(img, np.ndarray):  # 判断是否OpenCV图片类型
@@ -420,7 +437,7 @@ class Detector:
         return act_list if act_list else ["其他"]
 
 
-    def DrawPicture(self, image, face_positions, names, body_points, height_radio, width_radio, detected_keypoints, keypoints_list, personwiseKeypoints):
+    def DrawPicture(self, image, face_positions, names, body_points, detected_keypoints, keypoints_list, personwiseKeypoints):
         image = image.copy()
         name_list = []
         act_list = []
@@ -437,10 +454,10 @@ class Detector:
                 cv2.line(image, (B[0], A[0]), (B[1], A[1]), self.colors[i], 3, cv2.LINE_AA)
         if names:
             for face_position, name in zip(face_positions, names):
-                left_up_x = int(face_position[0][0]*width_radio)
-                left_up_y = int(face_position[0][1]*height_radio)
-                right_bottom_x = int(face_position[1][0]*width_radio)
-                right_bottom_y = int(face_position[1][1]*height_radio)
+                left_up_x = face_position[0][0]
+                left_up_y = face_position[0][1]
+                right_bottom_x = face_position[1][0]
+                right_bottom_y = face_position[1][1]
                 act = self.check_act(body_points, left_up_x, left_up_y, right_bottom_x, right_bottom_y)
                 
 
