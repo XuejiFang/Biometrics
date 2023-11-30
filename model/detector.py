@@ -482,10 +482,10 @@ class Detector:
             image_pose, pose_list, detected_keypoints, keypoints_list, personwiseKeypoints = pose_future.result()
 
             # 获取 RecognizeFace 的结果
-            face_position, name, height_radio, width_radio = face_future.result()
+            face_position, name = face_future.result()
 
             # 继续执行剩余部分的代码
-            draw_image, name_list, act_list = self.DrawPicture(cv2.resize(image, (480,640)), face_position, name, pose_list, height_radio, width_radio, detected_keypoints, keypoints_list, personwiseKeypoints)
+            draw_image, name_list, act_list = self.DrawPicture(cv2.resize(image, (480,640)), face_position, name, pose_list, detected_keypoints, keypoints_list, personwiseKeypoints)
 
             cv2.imwrite('./results/draw.jpg', draw_image)
 
