@@ -32,3 +32,4 @@ yunet:
   nms_threshold: 0.3
   sfaceFile: './checkpoints/sface.onnx'
   modelFile: './checkpoints/largeFaceRecognize4.pkl'
+  encoderFile: './chechpoints/encoder.pkl'
