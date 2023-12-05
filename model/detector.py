@@ -342,11 +342,7 @@ class Detector:
 
         face_position = self.Getpos(image, faces)
 
-        List = []
-        if face_position:
-            for pos in face_position:
-                List.append(pos[1][0]-pos[0][0])
-        return face_position, np.mean(List) if List else 0
+        return face_position
 
     def ExtractFeature(self, recognizer, img, face_position):
         features = []
@@ -363,7 +359,7 @@ class Detector:
             names.append(name_encoder.inverse_transform([index]))
         return names
 
-    def padding(img):   #padding到4：3
+    def padding(self, img):   #padding到4：3
         width = img.shape[1]/4
         height = img.shape[0]/3
         if width == height: return img, -1, 0
