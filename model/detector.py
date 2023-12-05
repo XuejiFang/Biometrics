@@ -62,7 +62,7 @@ class Detector:
                                         target_id=cv2.dnn.DNN_TARGET_CPU)
         self.model = Network()
         self.model.load_state_dict(torch.load(self.modelFile))
-        with open(encoderFile, 'rb') as file:
+        with open(self.encoderFile, 'rb') as file:
             self.name_encoder = pickle.load(file)
 
         self.net = cv2.dnn.readNetFromCaffe(self.protoFile, self.weightsFile)
@@ -343,9 +343,9 @@ class Detector:
         face_position = self.Getpos(image, faces)
 
         List = []
-            if face_position:
-                for pos in face_position:
-                    List.append(pos[1][0]-pos[0][0])
+        if face_position:
+            for pos in face_position:
+                List.append(pos[1][0]-pos[0][0])
         return face_position, np.mean(List) if List else 0
 
     def ExtractFeature(self, recognizer, img, face_position):
