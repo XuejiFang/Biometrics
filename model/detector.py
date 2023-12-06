@@ -470,9 +470,10 @@ class Detector:
         return image, name_list, act_list
     
     def detect(self, img):
+        resized_img = cv2.resize(img, (640, 480))
         with concurrent.futures.ThreadPoolExecutor() as executor:
             # 并行执行 get_pose 和 RecognizeFace
-            pose_future = executor.submit(self.get_pose, img, 320, if_save=True)
+            pose_future = executor.submit(self.get_pose, resized_img, 320, if_save=True)
             face_future = executor.submit(self.RecognizeFace, img)
 
             # 获取 get_pose 的结果
@@ -482,7 +483,7 @@ class Detector:
             face_position, name = face_future.result()
 
             # 继续执行剩余部分的代码
-            draw_image, name_list, act_list = self.DrawPicture(cv2.resize(img, (640,480)), face_position, name, pose_list, detected_keypoints, keypoints_list, personwiseKeypoints)
+            draw_image, name_list, act_list = self.DrawPicture(cv2.resize(resized_img, (640,480)), face_position, name, pose_list, detected_keypoints, keypoints_list, personwiseKeypoints)
 
             cv2.imwrite('./results/draw.jpg', draw_image)
 
