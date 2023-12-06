@@ -4,6 +4,7 @@ import pickle
 import torch.nn as nn
 import torch
 from PIL import Image, ImageDraw, ImageFont
+import concurrent.futures
 
 class Network(nn.Module):
     def __init__(self):
@@ -35,6 +36,7 @@ class Detector:
         self.yunetFile = config["yunet"]["yunetFile"]
         self.sfaceFile = config['yunet']["sfaceFile"]
         self.modelFile = config['yunet']["modelFile"]
+        self.encoderFile = config['yunet']["encoderFile"]
         self.score_threshold = config['yunet']['score_threshold']
         self.nms_threshold = config['yunet']['nms_threshold']
 
@@ -51,7 +53,7 @@ class Detector:
             input_size=(self.image_height, self.image_width),
             score_threshold=self.score_threshold,
             nms_threshold=self.nms_threshold,
-            top_k=10,
+            top_k = 5000,
             backend_id=self.backend,
             target_id=self.target
         )
@@ -61,7 +63,7 @@ class Detector:
                                         backend_id=cv2.dnn.DNN_BACKEND_DEFAULT,
                                         target_id=cv2.dnn.DNN_TARGET_CPU)
         self.model = Network()
-        self.model.load_state_dict(torch.load(self.modelFile))
+        self.model.load_state_dict(torch.load(self.modelFile, map_location=torch.device('cpu')))
         with open(self.encoderFile, 'rb') as file:
             self.name_encoder = pickle.load(file)
 
@@ -369,33 +371,29 @@ class Detector:
         #计算补充量
         if flag == 0:
             delta = height * 4 - img.shape[1]
-            pad_img = cv.copyMakeBorder(img, 0, 0, int(delta//2), int(delta-delta//2), cv.BORDER_CONSTANT,
+            pad_img = cv2.copyMakeBorder(img, 0, 0, int(delta//2), int(delta-delta//2), cv2.BORDER_CONSTANT,
                                     value=(255, 255, 255))
         else:
             delta = width * 3 - img.shape[0]
-            pad_img = cv.copyMakeBorder(img, 0, 0, int(delta // 2), int(delta - delta // 2), cv.BORDER_CONSTANT,
+            pad_img = cv2.copyMakeBorder(img, 0, 0, int(delta // 2), int(delta - delta // 2), cv2.BORDER_CONSTANT,
                                     value=(255, 255, 255))
         return pad_img, flag, int(delta // 2)
 
     def RecognizeFace(self, img):
-
         #Init
         padding_img, flag, padding_len = self.padding(img)
-
         #Detect
-        height_ratio = padding_img.shape[0]/480
-        width_ratio = padding_img.shape[1]/640
-        resized_img = cv.resize(padding_img, (640, 480))
-        face_position = self.DetectFace(img)
+        height_ratio = padding_img.shape[0] / 480
+        width_ratio = padding_img.shape[1] / 640
+        resized_img = cv2.resize(padding_img, (640, 480))
+        face_position = self.DetectFace(resized_img)
 
         #Extract Feature
-        features = self.ExtractFeature(self.recognizer, img, face_position)
-
+        features = self.ExtractFeature(self.recognizer, resized_img, face_position)
         #Match
         name = self.recognize(self.model, features, self.name_encoder)
 
         print(name)
-
         for pos in face_position:
             pos[0][0] = int(pos[0][0] * width_ratio)
             pos[0][1] = int(pos[0][1] * height_ratio)
@@ -404,7 +402,10 @@ class Detector:
             if flag != -1:
                 pos[0][0] = int(pos[0][0] - padding_len)
                 pos[1][0] = int(pos[1][0] - padding_len)
-
+            pos[0][0] = int(pos[0][0] / img.shape[1] * 640)
+            pos[1][0] = int(pos[1][0] / img.shape[1] * 640)
+            pos[0][1] = int(pos[0][1] / img.shape[0] * 480)
+            pos[1][1] = int(pos[1][1] / img.shape[0] * 480)
         return face_position, name
     
     def cv2ImgAddText(self, img, text, left, top, textColor=(0, 255, 0), textSize=10):
@@ -481,7 +482,7 @@ class Detector:
             face_position, name = face_future.result()
 
             # 继续执行剩余部分的代码
-            draw_image, name_list, act_list = self.DrawPicture(cv2.resize(image, (480,640)), face_position, name, pose_list, detected_keypoints, keypoints_list, personwiseKeypoints)
+            draw_image, name_list, act_list = self.DrawPicture(cv2.resize(img, (640,480)), face_position, name, pose_list, detected_keypoints, keypoints_list, personwiseKeypoints)
 
             cv2.imwrite('./results/draw.jpg', draw_image)
 
