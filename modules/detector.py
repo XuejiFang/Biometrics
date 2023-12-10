@@ -92,7 +92,6 @@ class Detector:
                        [0, 255, 0], [255, 200, 100], [255, 0, 255], [0, 255, 0], [255, 200, 100], [255, 0, 255],
                        [0, 0, 255], [255, 0, 0], [200, 200, 0], [255, 0, 0], [200, 200, 0], [0, 0, 0]]
 
-    @staticmethod
     def getKeypoints(self, probMap, threshold=0.1):
 
         mapSmooth = cv2.GaussianBlur(probMap, (3, 3), 0, 0)
@@ -226,25 +225,21 @@ class Detector:
         w = keypoints_list[int(personwiseKeypoints[person_id][self.BODY_PARTS[position]])][0]
         return [h, w]
 
-    @staticmethod
     def get_w_h(self, person_id, position, keypoints_list, personwiseKeypoints):
         return keypoints_list[int(personwiseKeypoints[person_id][self.BODY_PARTS[position]])]
 
-    @staticmethod
     def if_raising_hands(self, LEye, REye, LWrist, RWrist):
         if LEye[0] + REye[0] >= LWrist[0] + RWrist[0]:
             return True
         else:
             return False
 
-    @staticmethod
     def if_squaring_hips(self, LHip, RHip, LKee, RKnee):
         if LHip[0] + RHip[0] >= LKee[0] + RKnee[0]:
             return True
         else:
             return False
 
-    @staticmethod
     def if_scissoring_hands_single(self, Wrist, top, bottom):
         if top < Wrist[0] and bottom > Wrist[0]:
             return True
@@ -342,7 +337,6 @@ class Detector:
         return frameClone, pose_list, detected_keypoints, keypoints_list, personwiseKeypoints
 
     # face detection
-    @staticmethod
     def Getpos(self, image, faces):
         output = image.copy()
         position = []
@@ -372,7 +366,6 @@ class Detector:
 
         return face_position
 
-    @staticmethod
     def ExtractFeature(self, recognizer, img, face_position):
         features = []
         for pos in face_position:
@@ -380,7 +373,6 @@ class Detector:
             features.append(recognizer.feature(face_img))
         return features
 
-    @staticmethod
     def recognize(self, model, features, name_encoder):
         names = []
         for feature in features:
@@ -390,7 +382,6 @@ class Detector:
             print(names)
         return names
 
-    @staticmethod
     def padding(self, img):  # padding到4：3
         width = img.shape[1] / 4
         height = img.shape[0] / 3
@@ -438,7 +429,6 @@ class Detector:
             pos[1][1] = int(pos[1][1] / img.shape[0] * 480)
         return face_position, name
 
-    @staticmethod
     def cv2ImgAddText(self, img, text, left, top, textColor=(0, 255, 0), textSize=10):
         if isinstance(img, np.ndarray):  # 判断是否OpenCV图片类型
             img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -452,7 +442,6 @@ class Detector:
         # 转换回OpenCV格式
         return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
-    @staticmethod
     def check_act(self, body_points, left_up_x, left_up_y, right_bottom_x, right_bottom_y):
         # poseDict = {0: "举手", 1: "下蹲", 2: "剪刀手", 3: "其他"}
         poseDict = ["举手", "下蹲", "剪刀手", "其他"]
