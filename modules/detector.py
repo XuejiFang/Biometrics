@@ -47,7 +47,15 @@ class Detector:
         self.image_height = config["image"]["height"]
 
         self.textSize = config["textSize"]
-        self.backend = cv2.dnn.DNN_BACKEND_DEFAULT
+        if 'backend' in config['pose'].keys():
+            if config['pose']['backend'] == 0:
+                self.backend = cv2.dnn.DNN_BACKEND_DEFAULT
+            elif config['pose']['backend'] == 1:
+                self.backend = cv2.dnn.DNN_BACKEND_OPENCV
+            elif config['pose']['backend'] == 2:
+                self.backend = cv2.dnn.DNN_BACKEND_INFERENCE_ENGINE
+        else:
+            self.backend = cv2.dnn.DNN_BACKEND_DEFAULT
         self.target = cv2.dnn.DNN_TARGET_CPU
 
         self.yunet = cv2.FaceDetectorYN.create(
