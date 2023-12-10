@@ -5,10 +5,12 @@ import torch.nn as nn
 import torch
 from PIL import Image, ImageDraw, ImageFont
 import concurrent.futures
+import time
+
 
 class Network(nn.Module):
     def __init__(self):
-        super(Network,self).__init__()
+        super(Network, self).__init__()
         self.linear1 = nn.Linear(128, 256)
         self.linear4 = nn.Linear(256, 512)
         self.linear7 = nn.Linear(512, 536)
@@ -27,6 +29,7 @@ class Network(nn.Module):
         feature = self.sigmoid(feature)
 
         return feature
+
 
 class Detector:
     def __init__(self, config):
@@ -53,63 +56,63 @@ class Detector:
             input_size=(self.image_height, self.image_width),
             score_threshold=self.score_threshold,
             nms_threshold=self.nms_threshold,
-            top_k = 5000,
+            top_k=5000,
             backend_id=self.backend,
             target_id=self.target
         )
 
         self.recognizer = cv2.FaceRecognizerSF.create(model=self.sfaceFile,
-                                        config='',
-                                        backend_id=cv2.dnn.DNN_BACKEND_DEFAULT,
-                                        target_id=cv2.dnn.DNN_TARGET_CPU)
+                                                      config='',
+                                                      backend_id=cv2.dnn.DNN_BACKEND_DEFAULT,
+                                                      target_id=cv2.dnn.DNN_TARGET_CPU)
         self.model = Network()
         self.model.load_state_dict(torch.load(self.modelFile, map_location=torch.device('cpu')))
         with open(self.encoderFile, 'rb') as file:
             self.name_encoder = pickle.load(file)
 
         self.net = cv2.dnn.readNetFromCaffe(self.protoFile, self.weightsFile)
-        self.mapIdx = [[31,32], [39,40], [33,34], [35,36], [41,42], [43,44],
-                [19,20], [21,22], [23,24], [25,26], [27,28], [29,30],
-                [47,48], [49,50], [53,54], [51,52], [55,56],
-                [37,38], [45,46]]
+        self.mapIdx = [[31, 32], [39, 40], [33, 34], [35, 36], [41, 42], [43, 44],
+                       [19, 20], [21, 22], [23, 24], [25, 26], [27, 28], [29, 30],
+                       [47, 48], [49, 50], [53, 54], [51, 52], [55, 56],
+                       [37, 38], [45, 46]]
 
-        self.POSE_PAIRS = [[1,2], [1,5], [2,3], [3,4], [5,6], [6,7],
-                    [1,8], [8,9], [9,10], [1,11], [11,12], [12,13],
-                    [1,0], [0,14], [14,16], [0,15], [15,17],
-                    [2,17], [5,16] ]
+        self.POSE_PAIRS = [[1, 2], [1, 5], [2, 3], [3, 4], [5, 6], [6, 7],
+                           [1, 8], [8, 9], [9, 10], [1, 11], [11, 12], [12, 13],
+                           [1, 0], [0, 14], [14, 16], [0, 15], [15, 17],
+                           [2, 17], [5, 16]]
 
         self.nPoints = 18
 
-        self.BODY_PARTS = { "Nose": 0, "Neck": 1, "RShoulder": 2, "RElbow": 3, "RWrist": 4,
-                    "LShoulder": 5, "LElbow": 6, "LWrist": 7, "RHip": 8, "RKnee": 9,
-                    "RAnkle": 10, "LHip": 11, "LKnee": 12, "LAnkle": 13, "REye": 14,
-                    "LEye": 15, "REar": 16, "LEar": 17, "Background": 18 }
-        
-        self.colors = [ [0,100,255], [0,100,255], [0,255,255], [0,100,255], [0,255,255], [0,100,255],
-                [0,255,0], [255,200,100], [255,0,255], [0,255,0], [255,200,100], [255,0,255],
-                [0,0,255], [255,0,0], [200,200,0], [255,0,0], [200,200,0], [0,0,0]]
-    
+        self.BODY_PARTS = {"Nose": 0, "Neck": 1, "RShoulder": 2, "RElbow": 3, "RWrist": 4,
+                           "LShoulder": 5, "LElbow": 6, "LWrist": 7, "RHip": 8, "RKnee": 9,
+                           "RAnkle": 10, "LHip": 11, "LKnee": 12, "LAnkle": 13, "REye": 14,
+                           "LEye": 15, "REar": 16, "LEar": 17, "Background": 18}
+
+        self.colors = [[0, 100, 255], [0, 100, 255], [0, 255, 255], [0, 100, 255], [0, 255, 255], [0, 100, 255],
+                       [0, 255, 0], [255, 200, 100], [255, 0, 255], [0, 255, 0], [255, 200, 100], [255, 0, 255],
+                       [0, 0, 255], [255, 0, 0], [200, 200, 0], [255, 0, 0], [200, 200, 0], [0, 0, 0]]
+
+    @staticmethod
     def getKeypoints(self, probMap, threshold=0.1):
-    
-        mapSmooth = cv2.GaussianBlur(probMap,(3,3),0,0)
-    
-        mapMask = np.uint8(mapSmooth>threshold)
+
+        mapSmooth = cv2.GaussianBlur(probMap, (3, 3), 0, 0)
+
+        mapMask = np.uint8(mapSmooth > threshold)
         keypoints = []
-    
-        #find the blobs
+
+        # find the blobs
         contours, _ = cv2.findContours(mapMask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    
-        #for each blob find the maxima
+
+        # for each blob find the maxima
         for cnt in contours:
             blobMask = np.zeros(mapMask.shape)
             blobMask = cv2.fillConvexPoly(blobMask, cnt, 1)
             maskedProbMap = mapSmooth * blobMask
             _, maxVal, _, maxLoc = cv2.minMaxLoc(maskedProbMap)
             keypoints.append(maxLoc + (probMap[maxLoc[1], maxLoc[0]],))
-    
+
         return keypoints
-    
-    
+
     # Find valid connections between the different joints of a all persons present
     def getValidPairs(self, output, frameWidth, frameHeight, detected_keypoints):
         valid_pairs = []
@@ -124,23 +127,23 @@ class Detector:
             pafB = output[0, self.mapIdx[k][1], :, :]
             pafA = cv2.resize(pafA, (frameWidth, frameHeight))
             pafB = cv2.resize(pafB, (frameWidth, frameHeight))
-    
+
             # Find the keypoints for the first and second limb
             candA = detected_keypoints[self.POSE_PAIRS[k][0]]
             candB = detected_keypoints[self.POSE_PAIRS[k][1]]
             nA = len(candA)
             nB = len(candB)
-    
+
             # If keypoints for the joint-pair is detected
             # check every joint in candA with every joint in candB
             # Calculate the distance vector between the two joints
             # Find the PAF values at a set of interpolated points between the joints
             # Use the above formula to compute a score to mark the connection valid
-    
-            if( nA != 0 and nB != 0):
-                valid_pair = np.zeros((0,3))
+
+            if nA != 0 and nB != 0:
+                valid_pair = np.zeros((0, 3))
                 for i in range(nA):
-                    max_j=-1
+                    max_j = -1
                     maxScore = -1
                     found = 0
                     for j in range(nB):
@@ -158,14 +161,14 @@ class Detector:
                         paf_interp = []
                         for k in range(len(interp_coord)):
                             paf_interp.append([pafA[int(round(interp_coord[k][1])), int(round(interp_coord[k][0]))],
-                                            pafB[int(round(interp_coord[k][1])), int(round(interp_coord[k][0]))] ])
+                                               pafB[int(round(interp_coord[k][1])), int(round(interp_coord[k][0]))]])
                         # Find E
                         paf_scores = np.dot(paf_interp, d_ij)
-                        avg_paf_score = sum(paf_scores)/len(paf_scores)
-    
+                        avg_paf_score = sum(paf_scores) / len(paf_scores)
+
                         # Check if the connection is valid
                         # If the fraction of interpolated vectors aligned with PAF is higher then threshold -> Valid Pair
-                        if ( len(np.where(paf_scores > paf_score_th)[0]) / n_interp_samples ) > conf_th :
+                        if (len(np.where(paf_scores > paf_score_th)[0]) / n_interp_samples) > conf_th:
                             if avg_paf_score > maxScore:
                                 max_j = j
                                 maxScore = avg_paf_score
@@ -173,28 +176,27 @@ class Detector:
                     # Append the connection to the list
                     if found:
                         valid_pair = np.append(valid_pair, [[candA[i][3], candB[max_j][3], maxScore]], axis=0)
-    
+
                 # Append the detected connections to the global list
                 valid_pairs.append(valid_pair)
-            else: # If no keypoints are detected
+            else:  # If no keypoints are detected
                 print("No Connection : k = {}".format(k))
                 invalid_pairs.append(k)
                 valid_pairs.append([])
         return valid_pairs, invalid_pairs
-    
 
     # This function creates a list of keypoints belonging to each person
     # For each detected valid pair, it assigns the joint(s) to a person
     def getPersonwiseKeypoints(self, valid_pairs, invalid_pairs, keypoints_list):
         # the last number in each row is the overall score
         personwiseKeypoints = -1 * np.ones((0, 19))
-    
+
         for k in range(len(self.mapIdx)):
             if k not in invalid_pairs:
-                partAs = valid_pairs[k][:,0]
-                partBs = valid_pairs[k][:,1]
+                partAs = valid_pairs[k][:, 0]
+                partBs = valid_pairs[k][:, 1]
                 indexA, indexB = np.array(self.POSE_PAIRS[k])
-    
+
                 for i in range(len(valid_pairs[k])):
                     found = 0
                     person_idx = -1
@@ -203,18 +205,19 @@ class Detector:
                             person_idx = j
                             found = 1
                             break
-    
+
                     if found:
                         personwiseKeypoints[person_idx][indexB] = partBs[i]
-                        personwiseKeypoints[person_idx][-1] += keypoints_list[partBs[i].astype(int), 2] + valid_pairs[k][i][2]
-    
+                        personwiseKeypoints[person_idx][-1] += keypoints_list[partBs[i].astype(int), 2] + \
+                                                               valid_pairs[k][i][2]
+
                     # if find no partA in the subset, create a new subset
                     elif not found and k < 17:
                         row = -1 * np.ones(19)
                         row[indexA] = partAs[i]
                         row[indexB] = partBs[i]
                         # add the keypoint_scores for the two keypoints and the paf_score
-                        row[-1] = sum(keypoints_list[valid_pairs[k][i,:2].astype(int), 2]) + valid_pairs[k][i][2]
+                        row[-1] = sum(keypoints_list[valid_pairs[k][i, :2].astype(int), 2]) + valid_pairs[k][i][2]
                         personwiseKeypoints = np.vstack([personwiseKeypoints, row])
         return personwiseKeypoints
 
@@ -223,21 +226,25 @@ class Detector:
         w = keypoints_list[int(personwiseKeypoints[person_id][self.BODY_PARTS[position]])][0]
         return [h, w]
 
+    @staticmethod
     def get_w_h(self, person_id, position, keypoints_list, personwiseKeypoints):
         return keypoints_list[int(personwiseKeypoints[person_id][self.BODY_PARTS[position]])]
 
+    @staticmethod
     def if_raising_hands(self, LEye, REye, LWrist, RWrist):
         if LEye[0] + REye[0] >= LWrist[0] + RWrist[0]:
             return True
         else:
             return False
 
+    @staticmethod
     def if_squaring_hips(self, LHip, RHip, LKee, RKnee):
         if LHip[0] + RHip[0] >= LKee[0] + RKnee[0]:
             return True
         else:
             return False
 
+    @staticmethod
     def if_scissoring_hands_single(self, Wrist, top, bottom):
         if top < Wrist[0] and bottom > Wrist[0]:
             return True
@@ -247,28 +254,31 @@ class Detector:
     def if_scissoring_hands(self, LWrist, RWrist, LShoulder, RShoulder, LHip, RHip, alpha=0.1, beta=0.3):
         top = min(LShoulder[0], RShoulder[0])
         bottom = max(LHip[0], RHip[0])
-        alpha = alpha; beta = beta
+        alpha = alpha;
+        beta = beta
         top = top + alpha * (bottom - top)
         bottom = bottom - beta * (bottom - top)
-        return self.if_scissoring_hands_single(LWrist, top, bottom) or self.if_scissoring_hands_single(RWrist, top, bottom)
+        return self.if_scissoring_hands_single(LWrist, top, bottom) or self.if_scissoring_hands_single(RWrist, top,
+                                                                                                       bottom)
 
     def get_pose(self, image1, inHeight, if_save=False):
+        start3 = time.time()
         frameWidth = image1.shape[1]
         frameHeight = image1.shape[0]
-        inWidth = int((inHeight/frameHeight)*frameWidth)
+        inWidth = int((inHeight / frameHeight) * frameWidth)
 
         inpBlob = cv2.dnn.blobFromImage(image1, 1.0 / 255, (inWidth, inHeight),
-                            (0, 0, 0), swapRB=False, crop=False)
+                                        (0, 0, 0), swapRB=False, crop=False)
         self.net.setInput(inpBlob)
         output = self.net.forward()
 
         detected_keypoints = []
         keypoint_id = 0
-        keypoints_list = np.zeros((0,3))
+        keypoints_list = np.zeros((0, 3))
         threshold = 0.1
-        
+
         for part in range(self.nPoints):
-            probMap = output[0,part,:,:]
+            probMap = output[0, part, :, :]
             # 这里可以优化
             probMap = cv2.resize(probMap, (image1.shape[1], image1.shape[0]))
             keypoints = self.getKeypoints(probMap, threshold)
@@ -277,15 +287,15 @@ class Detector:
                 keypoints_with_id.append(keypoints[i] + (keypoint_id,))
                 keypoints_list = np.vstack([keypoints_list, keypoints[i]])
                 keypoint_id += 1
-        
+
             detected_keypoints.append(keypoints_with_id)
 
         frameClone = image1.copy()
         for i in range(self.nPoints):
             for j in range(len(detected_keypoints[i])):
                 cv2.circle(frameClone, detected_keypoints[i][j][0:2], 5, self.colors[i], -1, cv2.LINE_AA)
-        if if_save: cv2.imwrite("./results/Keypoints.jpg",frameClone)
-        
+        if if_save: cv2.imwrite("./results/Keypoints.jpg", frameClone)
+
         valid_pairs, invalid_pairs = self.getValidPairs(output, frameWidth, frameHeight, detected_keypoints)
         personwiseKeypoints = self.getPersonwiseKeypoints(valid_pairs, invalid_pairs, keypoints_list)
 
@@ -297,7 +307,7 @@ class Detector:
                 B = np.int32(keypoints_list[index.astype(int), 0])
                 A = np.int32(keypoints_list[index.astype(int), 1])
                 cv2.line(frameClone, (B[0], A[0]), (B[1], A[1]), self.colors[i], 3, cv2.LINE_AA)
-        if if_save: cv2.imwrite("./results/DetectedPose.jpg" , frameClone)
+        if if_save: cv2.imwrite("./results/DetectedPose.jpg", frameClone)
 
         pose_list = []
         for person in personwiseKeypoints:
@@ -305,20 +315,34 @@ class Detector:
             pose = []
             if i < 0:
                 continue
-            if self.if_raising_hands(self.get_h_w(i, 'LEye', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'REye', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'LWrist', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'RWrist', keypoints_list, personwiseKeypoints)):
+            if self.if_raising_hands(self.get_h_w(i, 'LEye', keypoints_list, personwiseKeypoints),
+                                     self.get_h_w(i, 'REye', keypoints_list, personwiseKeypoints),
+                                     self.get_h_w(i, 'LWrist', keypoints_list, personwiseKeypoints),
+                                     self.get_h_w(i, 'RWrist', keypoints_list, personwiseKeypoints)):
                 pose.append(0)
-            elif self.if_squaring_hips(self.get_h_w(i, 'LHip', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'RHip', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'LKnee', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'RKnee', keypoints_list, personwiseKeypoints)):
+            elif self.if_squaring_hips(self.get_h_w(i, 'LHip', keypoints_list, personwiseKeypoints),
+                                       self.get_h_w(i, 'RHip', keypoints_list, personwiseKeypoints),
+                                       self.get_h_w(i, 'LKnee', keypoints_list, personwiseKeypoints),
+                                       self.get_h_w(i, 'RKnee', keypoints_list, personwiseKeypoints)):
                 pose.append(1)
-            elif self.if_scissoring_hands(self.get_h_w(i, 'LWrist', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'RWrist', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'LShoulder', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'RShoulder', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'LHip', keypoints_list, personwiseKeypoints), self.get_h_w(i, 'RHip', keypoints_list, personwiseKeypoints)):
+            elif self.if_scissoring_hands(self.get_h_w(i, 'LWrist', keypoints_list, personwiseKeypoints),
+                                          self.get_h_w(i, 'RWrist', keypoints_list, personwiseKeypoints),
+                                          self.get_h_w(i, 'LShoulder', keypoints_list, personwiseKeypoints),
+                                          self.get_h_w(i, 'RShoulder', keypoints_list, personwiseKeypoints),
+                                          self.get_h_w(i, 'LHip', keypoints_list, personwiseKeypoints),
+                                          self.get_h_w(i, 'RHip', keypoints_list, personwiseKeypoints)):
                 pose.append(2)
 
             nose_w_h = self.get_w_h(i, 'Nose', keypoints_list, personwiseKeypoints)
             pose_list.append([nose_w_h[0], nose_w_h[1], pose])
 
+        end3 = time.time()
+        print("get pose cost time: ", end3 - start3)
 
         return frameClone, pose_list, detected_keypoints, keypoints_list, personwiseKeypoints
 
     # face detection
+    @staticmethod
     def Getpos(self, image, faces):
         output = image.copy()
         position = []
@@ -326,7 +350,7 @@ class Detector:
         if faces is not None:
             for idx, face in enumerate(faces):
                 coords = face[:-1].astype(np.int32)
-                position.append([[coords[0],coords[1]],[coords[0]+coords[2],coords[1]+coords[3]]])
+                position.append([[coords[0], coords[1]], [coords[0] + coords[2], coords[1] + coords[3]]])
         return position
 
     def DetectFace(self, image):
@@ -338,14 +362,17 @@ class Detector:
         #         cv2.dnn.DNN_TARGET_OPENCL,
         #         cv2.dnn.DNN_TARGET_OPENCL_FP16,
         #         cv2.dnn.DNN_TARGET_MYRIAD)
-
+        start2 = time.time()
         self.yunet.setInputSize((image.shape[1], image.shape[0]))
-        _, faces = self.yunet.detect(image) # faces: None, or nx15 np.array
+        _, faces = self.yunet.detect(image)  # faces: None, or nx15 np.array
 
         face_position = self.Getpos(image, faces)
+        end2 = time.time()
+        print("face detection cost time: ", end2 - start2)
 
         return face_position
 
+    @staticmethod
     def ExtractFeature(self, recognizer, img, face_position):
         features = []
         for pos in face_position:
@@ -353,47 +380,50 @@ class Detector:
             features.append(recognizer.feature(face_img))
         return features
 
+    @staticmethod
     def recognize(self, model, features, name_encoder):
         names = []
         for feature in features:
             pred = model(feature)
             index = np.argmax(pred.detach().numpy())
             names.append(name_encoder.inverse_transform([index]))
+            print(names)
         return names
 
-    def padding(self, img):   #padding到4：3
-        width = img.shape[1]/4
-        height = img.shape[0]/3
+    @staticmethod
+    def padding(self, img):  # padding到4：3
+        width = img.shape[1] / 4
+        height = img.shape[0] / 3
         if width == height: return img, -1, 0
-        if width > height: flag = 1 #只需要在高上padding
-        else: flag = 0  #只需要在宽上padding
+        if width > height:
+            flag = 1  # 只需要在高上padding
+        else:
+            flag = 0  # 只需要在宽上padding
 
-        #计算补充量
+        # 计算补充量
         if flag == 0:
             delta = height * 4 - img.shape[1]
-            pad_img = cv2.copyMakeBorder(img, 0, 0, int(delta//2), int(delta-delta//2), cv2.BORDER_CONSTANT,
-                                    value=(255, 255, 255))
+            pad_img = cv2.copyMakeBorder(img, 0, 0, int(delta // 2), int(delta - delta // 2), cv2.BORDER_CONSTANT,
+                                         value=(255, 255, 255))
         else:
             delta = width * 3 - img.shape[0]
             pad_img = cv2.copyMakeBorder(img, 0, 0, int(delta // 2), int(delta - delta // 2), cv2.BORDER_CONSTANT,
-                                    value=(255, 255, 255))
+                                         value=(255, 255, 255))
         return pad_img, flag, int(delta // 2)
 
     def RecognizeFace(self, img):
-        #Init
+        # Init
         padding_img, flag, padding_len = self.padding(img)
-        #Detect
+        # Detect
         height_ratio = padding_img.shape[0] / 480
         width_ratio = padding_img.shape[1] / 640
         resized_img = cv2.resize(padding_img, (640, 480))
         face_position = self.DetectFace(resized_img)
 
-        #Extract Feature
+        # Extract Feature
         features = self.ExtractFeature(self.recognizer, resized_img, face_position)
-        #Match
+        # Match
         name = self.recognize(self.model, features, self.name_encoder)
-
-        print(name)
         for pos in face_position:
             pos[0][0] = int(pos[0][0] * width_ratio)
             pos[0][1] = int(pos[0][1] * height_ratio)
@@ -407,7 +437,8 @@ class Detector:
             pos[0][1] = int(pos[0][1] / img.shape[0] * 480)
             pos[1][1] = int(pos[1][1] / img.shape[0] * 480)
         return face_position, name
-    
+
+    @staticmethod
     def cv2ImgAddText(self, img, text, left, top, textColor=(0, 255, 0), textSize=10):
         if isinstance(img, np.ndarray):  # 判断是否OpenCV图片类型
             img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -421,20 +452,21 @@ class Detector:
         # 转换回OpenCV格式
         return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
+    @staticmethod
     def check_act(self, body_points, left_up_x, left_up_y, right_bottom_x, right_bottom_y):
         # poseDict = {0: "举手", 1: "下蹲", 2: "剪刀手", 3: "其他"}
         poseDict = ["举手", "下蹲", "剪刀手", "其他"]
         # act = "其他"
         act_list = []
         for body_point in body_points:
-            if left_up_x<body_point[0]<right_bottom_x and left_up_y<body_point[1]<right_bottom_y:
+            if left_up_x < body_point[0] < right_bottom_x and left_up_y < body_point[1] < right_bottom_y:
                 for index in body_point[2]:
                     act = poseDict[index]
                     act_list.append(act)
         return act_list if act_list else ["其他"]
 
-
-    def DrawPicture(self, image, face_positions, names, body_points, detected_keypoints, keypoints_list, personwiseKeypoints):
+    def DrawPicture(self, image, face_positions, names, body_points, detected_keypoints, keypoints_list,
+                    personwiseKeypoints):
         image = image.copy()
         name_list = []
         act_list = []
@@ -456,24 +488,24 @@ class Detector:
                 right_bottom_x = face_position[1][0]
                 right_bottom_y = face_position[1][1]
                 act = self.check_act(body_points, left_up_x, left_up_y, right_bottom_x, right_bottom_y)
-                
 
-                text = '人名：%s\n动作：%s\n'%(name[0],act)
+                text = '人名：%s\n动作：%s\n' % (name[0], act)
                 name_list.append(name[0])
                 act_list.append(act)
 
                 # Draw face bounding box
                 cv2.rectangle(image, (left_up_x, left_up_y), (right_bottom_x, right_bottom_y), (0, 0, 255), 2)
                 # Put Text
-                cv2.rectangle(image, (left_up_x-10, left_up_y-10), (left_up_x+140, left_up_y-70), (255, 255, 255), 2)
+                cv2.rectangle(image, (left_up_x - 10, left_up_y - 10), (left_up_x + 140, left_up_y - 70),
+                              (255, 255, 255), 2)
                 image = self.cv2ImgAddText(image, text, left_up_x, left_up_y - 65, (255, 0, 0), self.textSize)
         return image, name_list, act_list
-    
+
     def detect(self, img):
         resized_img = cv2.resize(img, (640, 480))
         with concurrent.futures.ThreadPoolExecutor() as executor:
             # 并行执行 get_pose 和 RecognizeFace
-            pose_future = executor.submit(self.get_pose, resized_img, 320, if_save=True)
+            pose_future = executor.submit(self.get_pose, resized_img, 320, if_save=False)
             face_future = executor.submit(self.RecognizeFace, img)
 
             # 获取 get_pose 的结果
@@ -483,8 +515,9 @@ class Detector:
             face_position, name = face_future.result()
 
             # 继续执行剩余部分的代码
-            draw_image, name_list, act_list = self.DrawPicture(cv2.resize(resized_img, (640,480)), face_position, name, pose_list, detected_keypoints, keypoints_list, personwiseKeypoints)
+            draw_image, name_list, act_list = self.DrawPicture(cv2.resize(resized_img, (640, 480)), face_position, name,
+                                                               pose_list, detected_keypoints, keypoints_list,
+                                                               personwiseKeypoints)
+            # cv2.imwrite('./results/draw.jpg', draw_image)
 
-            cv2.imwrite('./results/draw.jpg', draw_image)
-
-            return name_list, act_list
+            return name_list, act_list, draw_image

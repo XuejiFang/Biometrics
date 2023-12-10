@@ -1,20 +1,20 @@
 mqtt:
-  broker: "iot.taginator.cn"
-  port: 39683
-  topic1: "nssol/rtb/sensor1"
-  topic2: "nssol/rtb/sensor2"
+  broker: "127.0.0.1"
+  port: 1884
+  topic_1: "test/demo1"
+  topic_2: "test/demo2"
 
 http:
   endpoint: "http://iot.taginator.cn:39699/rtb/result"
 
 camera:
-  ip1: "192.168.1.65"
-  rtsp_url1: "rtsp://camera65:nssol2023@nat.reimu.site:39665/ch1/main/av_stream"
-  ip2: "192.168.1.67"
-  rtsp_url2: "rtsp://camera65:nssol2023@nat.reimu.site:39667/ch1/main/av_stream"
+  ip_1: "192.168.1.65"
+  rtsp_url_1: "rtsp://camera65:nssol2023@nat.reimu.site:39665/ch1/main/av_stream"
+  ip_2: "192.168.1.67"
+  rtsp_url_2: "rtsp://camera65:nssol2023@nat.reimu.site:39667/ch1/main/av_stream"
 
 team:
-  name: "线条小狗"
+  name: "线条小狗队"
 
 image:
   width: 640
