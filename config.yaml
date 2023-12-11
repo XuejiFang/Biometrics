@@ -23,6 +23,7 @@ image:
 textSize: 20
 
 pose:
+  num_threads: 8
   backend: 0  # 0: Defualt, 1: OpenCV, 2: OpenVINO
   protoFile: "./checkpoints/pose_deploy_linevec.prototxt"
   weightsFile: "./checkpoints/pose_iter_440000.caffemodel"

@@ -56,6 +56,11 @@ class Detector:
                 self.backend = cv2.dnn.DNN_BACKEND_INFERENCE_ENGINE
         else:
             self.backend = cv2.dnn.DNN_BACKEND_DEFAULT
+        if 'num_threads' in config['pose'].keys():
+            self.num_threads = config['pose']['num_threads']
+        else:
+            self.num_threads = 4
+        cv2.setNumThreads(self.num_threads)
         self.target = cv2.dnn.DNN_TARGET_CPU
 
         self.yunet = cv2.FaceDetectorYN.create(
