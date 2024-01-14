@@ -4,7 +4,7 @@ The code is available at this [link](https://github.com/XuejiFang/Biometrics/tre
 
 <img src="./asset/231215.jpg" alt="亚军" width="50%">
 
-【2023.01.12】I achieved ***Outstanding Participation Award*** in the Winter School on Biometrics 2023. And thanks to [Yanhe BAI](https://github.com/byebaibai) from BNU for the contributions to this project during the WSB Hands On session.
+【2023.01.12】I achieved ***Outstanding Participation Award*** in the IAPR/IEEE Winter School on Biometrics 2023. And thanks to [Yanhe BAI](https://github.com/byebaibai) from BNU for the contributions to this project during the WSB Hands On session.
 
 <img src="./asset/230112.jpg" alt="Outstanding Participation Award" width="50%">
 
