@@ -1,6 +1,6 @@
 # 第二届日铁杯人脸识别躲避球PK赛
 ## News
-【2024.12.15】We achieved **Second Place** in the finals.
+【2023.12.15】We achieved **Runner-Up** in the finals.
 
 <img src="./亚军.jpg" alt="亚军" width="50%">
 
