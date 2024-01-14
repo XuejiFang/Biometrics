@@ -1,4 +1,9 @@
 # 第二届日铁杯人脸识别躲避球PK赛
+## News
+【2024.12.15】We achieved **Second Place** in the finals.
+
+<img src="./亚军.jpg" alt="亚军" width="50%">
+
 
 ## Dataset
 
