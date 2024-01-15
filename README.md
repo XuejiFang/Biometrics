@@ -1,5 +1,5 @@
 ## News
-【2023.12.15】We won ***Runner-Up*** in the *Nippon Software Cup* hosted by Shanghai University. Team members include [Tianyu HUANG](https://github.com/cookie-pie-oops), [Jun JIANG](https://github.com/Jungle0430) and [JianYu WU](https://github.com/Freddie1946) from SHU.
+【2023.12.15】We won ***Runner-Up*** in the *Nippon Software Cup* hosted by Shanghai University. Team members include [Tianyu HUANG](https://github.com/cookie-pie-oops), [Jun JIANG](https://github.com/Jungle0430) and [Jianyu WU](https://github.com/Freddie1946) from SHU.
 The code is available at this [link](https://github.com/XuejiFang/Biometrics/tree/dodgeball-master).
 
 <img src="./asset/231215.jpg" alt="亚军" width="50%">
